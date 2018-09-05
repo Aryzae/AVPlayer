@@ -8,13 +8,17 @@
 
 import UIKit
 import AVFoundation
+import youtube_ios_player_helper
 
 class ViewController: UIViewController {
 
     var avPlayerLayer: AVPlayerLayer!
     var avPlayer: AVPlayer!
 
+    var ytPlayerView: YTPlayerView!
+
     // video idから再生url取れる 参考url -> https://muunyblue.github.io/0a7d83f084ec258aefd128569dda03d7.html
+    // アップロードしたユーザーがYouTube外での動画再生を許可しているものに限られる
     // https://www.youtube.com/get_video_info?video_id=<video_id>
     // https://www.youtube.com/embed/R9780hhdDPk の `R9780hhdDPk`がvideo_id
     // https://www.youtube.com/embed/dLWOKfcns08
@@ -25,6 +29,10 @@ class ViewController: UIViewController {
                        "https://www.youtube.com/get_video_info?video_id=dLWOKfcns08",
                        "https://www.youtube.com/get_video_info?video_id=ZnfHNU6iej4",
                        "https://www.youtube.com/get_video_info?video_id=fHsQ-f7-nmE"]
+    let youtubeVideoIDs = ["R9780hhdDPk",
+                           "dLWOKfcns08",
+                           "ZnfHNU6iej4",
+                           "fHsQ-f7-nmE"]
     var index: Int = 0
 
     override func viewDidLoad() {
@@ -32,12 +40,19 @@ class ViewController: UIViewController {
         // Do any additional setup after loading the view, typically from a nib.
         avPlayer = AVPlayer(playerItem: nil)
         avPlayerLayer = AVPlayerLayer(player: avPlayer)
-        avPlayerLayer.frame = view.frame
+        avPlayerLayer.frame = CGRect(x: 0, y: 0, width: view.frame.width, height: view.frame.height / 2)
+        //
+        let rect = CGRect(x: 0, y: avPlayerLayer.frame.maxY, width: view.frame.width, height: view.frame.width * 9 / 16) // view.frame.width * 9 / 16 = 210.9375
+        ytPlayerView = YTPlayerView(frame: rect)
+        ytPlayerView.backgroundColor = .white
+        ytPlayerView.delegate = self
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         view.layer.addSublayer(avPlayerLayer)
+        //
+        view.addSubview(ytPlayerView)
     }
 
     override func didReceiveMemoryWarning() {
@@ -86,14 +101,28 @@ class ViewController: UIViewController {
         getURL(urlString) { url in
             self.avPlayer.replaceCurrentItem(with: AVPlayerItem(url: url))
         }
+        //
+        let videoID = youtubeVideoIDs[index]
+        ytPlayerView.load(withVideoId: videoID, playerVars: ["autoplay" : 0,
+                                                             "controls" : 0,
+                                                             "fs" : 0,
+                                                             "iv_load_policy" : 3,
+                                                             "modestbranding" : 1,
+                                                             "playsinline" : 1,
+                                                             "rel" : 0,
+                                                             "showinfo" : 0])
     }
 
     @IBAction func didTapPauseButton(_ sender: UIBarButtonItem) {
         avPlayer.pause()
+        //
+        ytPlayerView.pauseVideo()
     }
 
     @IBAction func didTapPlayButton(_ sender: UIBarButtonItem) {
         avPlayer.play()
+        //
+        ytPlayerView.playVideo()
     }
 
     @IBAction func didTapRewindButton(_ sender: UIBarButtonItem) {
@@ -102,3 +131,9 @@ class ViewController: UIViewController {
 
 }
 
+extension ViewController: YTPlayerViewDelegate {
+    func playerViewDidBecomeReady(_ playerView: YTPlayerView) {
+        playerView.isUserInteractionEnabled = false
+        ytPlayerView.playVideo()
+    }
+}
